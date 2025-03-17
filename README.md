@@ -1,152 +1,180 @@
-# Color Object Tracker
+# Capacitated Vehicle Routing Problem (CVRP) Solver
 
 
-Color Object Tracker is a computer vision-based system that detects and tracks objects of a specific color using an IP camera feed. This project leverages OpenCV for image processing and PIL for bounding box detection.
+This project implements a greedy algorithm to solve the Capacitated Vehicle Routing Problem (CVRP). The solver finds efficient routes for visiting multiple locations while considering weight/capacity constraints and maximizing prize collection.
+
+---
 
 ## Table of Contents
 - [Overview](#overview)
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Usage](#usage)
+- [Algorithm Explanation](#algorithm-explanation)
 - [Code Explanation](#code-explanation)
 - [Customization](#customization)
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
 
-## Overview
-This project implements a real-time color detection and tracking system. Using a camera feed, you can:
+---
 
-- Detect objects of a specific color (yellow by default)
-- Track objects with bounding boxes around the detected color
-- Exit the program by pressing the `q` key
+## Overview
+This project solves a variation of the Vehicle Routing Problem where:
+
+- A vehicle must visit a set of locations starting and ending at a depot (node 0)
+- Each location has an associated weight and prize
+- The vehicle has a maximum carrying capacity
+- The goal is to create efficient routes that respect the capacity constraint while collecting prizes
+
+The solver generates multiple routes as needed to visit all locations, visualizes these routes, and tracks performance metrics.
+
+---
 
 ## Requirements
 Ensure you have the following installed:
 
 - Python 3.6+
-- OpenCV
 - NumPy
-- PIL (Python Imaging Library/Pillow)
-- Access to an IP camera or webcam
+- Matplotlib
+- Random (standard library)
+
+---
 
 ## Installation
 Clone this repository:
 
 ```bash
-git clone https://github.com/yourusername/color-object-tracker.git
-cd color-object-tracker
+git clone https://github.com/yourusername/cvrp-solver.git
+cd cvrp-solver
 ```
 
 Install the required dependencies:
 
 ```bash
-pip install opencv-python numpy pillow
+pip install numpy matplotlib
 ```
+
+---
 
 ## Usage
 Run the main script:
 
 ```bash
-python main.py
+python cvrp_solver.py
 ```
 
-By default, the program will:
+The script will:
 
-- Connect to the IP camera at the URL specified in the script
-- Detect yellow objects in the camera feed
-- Draw green bounding boxes around detected objects
-- Display coordinates in the console
+- Generate optimal routes considering capacity constraints
+- Display the routes on a coordinate plot
+- Show cost metrics across generations
+- Print route details and prize totals to the console
+
+---
+
+## Algorithm Explanation
+This implementation uses a greedy nearest-neighbor algorithm with capacity constraints:
+
+1. Start from the depot (node 0)
+2. Choose the nearest unvisited node that doesn't exceed capacity when added
+3. Move to that node and repeat until no more nodes can be added
+4. Return to the depot and start a new route if needed
+5. Continue until all nodes are visited
+
+The algorithm balances minimizing travel distance while respecting the maximum vehicle capacity of 200 units.
+
+---
 
 ## Code Explanation
 
-### `util.py`
-This utility file contains a function to calculate HSV color limits for a given BGR color.
-
-#### HSV Color Conversion:
+### Data Initialization:
 ```python
-def get_limits(colour):
-    c = np.uint8([[colour]])
-    hsv = cv2.cvtColor(c, cv2.COLOR_BGR2HSV)
+locations = np.array([...])  # [x,y] coordinates for each location
+weights = np.array([...])    # Weight of items at each location
+prizes = np.array([...])     # Prize value of each location
+capacity = 200               # Maximum vehicle capacity
 ```
-- Converts a BGR color to HSV color space
 
-#### Color Range Definition:
+### Distance Calculation:
 ```python
-lower_Limit = hsv[0][0][0]-10, 100, 100
-upper_Limit = hsv[0][0][0]+10, 255, 255
+def calculate_distance_matrix(locations):
+    return np.linalg.norm(locations[:, None] - locations[None,:], axis=2)
 ```
-- Creates a range of HSV values centered around the target color
-- The range is ±10 in hue, with fixed saturation and value ranges
+Calculates Euclidean distances between all location pairs.
 
-### `main.py`
-This script contains the main logic for color detection and tracking.
-
-#### Camera Connection:
+### Route Generation:
 ```python
-url = 'http://10.5.126.236:8080/video'
-cap = cv2.VideoCapture(url)
+while len(visited_all_nodes) < len(locations)-1:
+    # Route building logic
+    for next_node in range(1,len(locations)):
+        if next_node not in visited_all_nodes:
+            weight_if_visited = total_weight + weights[next_node]
+            if weight_if_visited <= capacity:
+                # Select node with shortest distance
 ```
-- Connects to an IP camera using its URL
+Builds routes one at a time, respecting capacity constraints.
 
-#### Color Detection:
+### Visualization:
 ```python
-yellow = [0, 255, 255]
-hsvimage = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-lower_Limit, upper_Limit = get_limits(yellow)
-mask = cv2.inRange(hsvimage, lower_Limit, upper_Limit)
+def plot_routes(locations, routes, total_prizes):
+    # Plotting logic
 ```
-- Converts each frame to HSV color space
-- Creates a binary mask where white pixels represent the detected color
+Visualizes routes on a coordinate plane with different colors.
 
-#### Object Tracking:
+Tracks and displays prizes collected per route.
+
+### Performance Tracking:
 ```python
-mask_ = Image.fromarray(mask)
-bbox = mask_.getbbox()
-if bbox is not None:
-    xi, y1, x2, y2 = bbox
-    frame = cv2.rectangle(frame, (xi, y1), (x2, y2), (0, 255, 0), 2)
+best_cost_history.append(total_cost)
+average_cost_history = [...]
 ```
-- Uses PIL to find the bounding box of detected objects
-- Draws a green rectangle around the detected object
+Records performance metrics across route generations.
+
+---
 
 ## Customization
-You can modify the code to suit your needs:
+You can modify the following parameters to adapt the solver to different scenarios:
 
-### Change Target Color:
+### Location Data:
 ```python
-# Change this line in main.py to detect a different color
-yellow = [0, 255, 255]  # [B, G, R] format
-
-# Examples:
-# red = [0, 0, 255]
-# green = [0, 255, 0]
-# blue = [255, 0, 0]
+# Change these arrays to define your own problem instances
+locations = np.array([...])
+weights = np.array([...])
+prizes = np.array([...])
 ```
 
-### Adjust HSV Range Sensitivity:
+### Capacity Constraint:
 ```python
-# In util.py, modify these lines:
-lower_Limit = hsv[0][0][0]-10, 100, 100  # Change -10 to adjust hue range
-upper_Limit = hsv[0][0][0]+10, 255, 255  # Change +10 to adjust hue range
+capacity = 200  # Change to adjust vehicle capacity
 ```
 
-### Use Local Webcam Instead of IP Camera:
+### Randomization Seed:
 ```python
-# Replace the URL line with:
-cap = cv2.VideoCapture(0)  # 0 for default webcam
+random.seed(42)  # Change for different random behaviors
 ```
+
+### Optimization Criteria:
+You can modify the node selection logic to consider different factors:
+```python
+# Current: Selects nearest node
+if distance_to_next < best_next_distance:
+    
+# Alternative: Consider prize/distance ratio
+# if prizes[next_node]/distance_to_next > best_ratio:
+```
+
+---
 
 ## Troubleshooting
+| Issue | Solution |
+|--------|----------|
+| No feasible routes found | Increase capacity or decrease weights |
+| Poor route quality | Adjust node selection criteria or implement meta-heuristics |
+| Performance issues | Reduce problem size or optimize distance calculations |
+| Visualization errors | Check matplotlib installation and compatibility |
 
-| Issue                | Solution |
-|----------------------|----------|
-| No camera connection | Check if the IP camera URL is correct |
-| Poor color detection | Adjust HSV range values in `util.py` |
-| High CPU usage       | Reduce frame size or processing frequency |
-| No objects detected  | Ensure proper lighting and color visibility |
-| ImportError          | Verify all dependencies are installed |
+---
 
-## License
-This project is licensed under the MIT License.
+
 
 _Last updated: March 17, 2025_
